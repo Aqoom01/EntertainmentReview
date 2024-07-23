@@ -25,7 +25,7 @@ class Entertainment(Base):
 class User(Base):
     __tablename__ = "user"
     
-    ID = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    ID = Column(String(30), primary_key=True, index=True)
     userName = Column(String(10))
     userPassword = Column(String(12))
     userPhone = Column(String(15))
