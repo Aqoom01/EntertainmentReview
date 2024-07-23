@@ -34,8 +34,6 @@ def checkValidateforUse(user: User, db: Session):
     if user.ID == None:
         raise HTTPException(status_code=404, detail="User not found")
     if user.userAccess == 0:
-        db.delete(user)
-        db.commit()
         raise HTTPException(status_code=403, detail="Access is finished.")
     else:
         user.userAccess = user.userAccess - 1
