@@ -16,7 +16,6 @@ from models import User, Entertainment
 from database import SessionLocal, engine, Base
 
 app = FastAPI()
-user_key = 1
 
 def get_db():
     db = SessionLocal()
@@ -25,7 +24,13 @@ def get_db():
     finally:
         db.close()
 
-def checkValidate(user: User, db: Session):
+def checkValidateforCreate(user: User, db: Session):
+    if user != None:
+        raise HTTPException(status_code=403, detail="This ID is working")
+        
+
+
+def checkValidateforUse(user: User, db: Session):
     if user.ID == None:
         raise HTTPException(status_code=404, detail="User not found")
     if user.userAccess == 0:
@@ -37,29 +42,26 @@ def checkValidate(user: User, db: Session):
         db.commit()
 
 class CreateUserRequest(BaseModel):
+    id: str
     name: str
     password: str
     phone: str
 
 @app.post("/entertainment")
 def create_user(data: CreateUserRequest, db: Session = Depends(get_db)):
-    global user_key
-    db_user = User(userName=data.name, userPassword=data.password, userPhone=data.phone, userAccess = 10)
+    forcheck = db.query(User).filter(User.ID == data.id).first()
+    checkValidateforCreate(forcheck, db)
+    
+    db_user = User(ID = data.id, userName=data.name, userPassword=data.password, userPhone=data.phone, userAccess = 10)
     db.add(db_user)
     db.commit()
-    user_key = user_key + 1
-    return {"user_key" : user_key}
+    return {"your_ID" : db_user.ID , "detail" : "Now you can use with this ID"}
 
 
-@app.get("/entertainment/{api_key}")
-def top10Review(api_key: str, db: Session = Depends(get_db)):
-    try:
-        user_id = int(api_key)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid API key")
-
+@app.get("/entertainment/{user_id}")
+def top10Review(user_id: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.ID == user_id).first()
-    checkValidate(user, db)
+    checkValidateforUse(user, db)
 
     # Query for top 10 reviews
     top10 = db.query(
@@ -76,10 +78,10 @@ def top10Review(api_key: str, db: Session = Depends(get_db)):
 
     return result
 
-@app.get("/entertainment/{api_key}/{entertainment_name}")
-def read_entertainment(api_key: str, entertainment_name: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.ID == api_key).first()
-    checkValidate(user, db)
+@app.get("/entertainment/{user_id}}/{entertainment_name}")
+def read_entertainment(user_id: str, entertainment_name: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.ID == user_id).first()
+    checkValidateforUse(user, db)
     
     avg_score = db.query(func.avg(Entertainment.Score)).filter(Entertainment.workName == entertainment_name).scalar()
     
