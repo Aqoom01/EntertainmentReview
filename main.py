@@ -29,7 +29,6 @@ def checkValidateforCreate(user: User, db: Session):
         raise HTTPException(status_code=403, detail="This ID is working")
         
 
-
 def checkValidateforUse(user: User, db: Session):
     if user.ID == None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -44,6 +43,9 @@ class CreateUserRequest(BaseModel):
     name: str
     password: str
     phone: str
+
+class SpecificEntertainmentReview(BaseModel):
+    workName: str
 
 @app.post("/entertainment")
 def create_user(data: CreateUserRequest, db: Session = Depends(get_db)):
@@ -76,12 +78,12 @@ def top10Review(user_id: str, db: Session = Depends(get_db)):
 
     return result
 
-@app.get("/entertainment/{user_id}}/{entertainment_name}")
-def read_entertainment(user_id: str, entertainment_name: str, db: Session = Depends(get_db)):
+@app.get("/entertainment/{user_id}/specific")
+def read_entertainment(user_id: str, data: SpecificEntertainmentReview, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.ID == user_id).first()
     checkValidateforUse(user, db)
     
-    avg_score = db.query(func.avg(Entertainment.Score)).filter(Entertainment.workName == entertainment_name).scalar()
+    avg_score = db.query(func.avg(Entertainment.Score)).filter(Entertainment.workName == data.workName).scalar()
     
     if avg_score is None:
         raise HTTPException(status_code=404, detail="Entertainment not found")
