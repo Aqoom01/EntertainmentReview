@@ -27,13 +27,9 @@ def get_db():
     finally:
         db.close()
 
-def checkValidateforCreate(user: User, db: Session):
-    if user != None:
-        raise HTTPException(status_code=403, detail="This ID is working")
-        
-
-def checkValidateforUse(user: User, db: Session):
-    if user.ID == None:
+def checkValidateforUse(user_id: str, db: Session):
+    user = db.query(User).filter(User.ID == user_id).first()
+    if user == None:
         raise HTTPException(status_code=404, detail="User not found")
     if user.userAccess == 0:
         raise HTTPException(status_code=403, detail="Access is finished.")
@@ -49,11 +45,11 @@ class SpecificEntertainmentReview(BaseModel):
 
 @app.get('/login')
 def login():
-    kakao_auth_url = f"https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${ServerInformation.REST_API_KEY}&redirect_uri=${ServerInformation.REDIRECT_URI}"
-    return RedirectResponse(url=kakao_auth_url)
+    kakao_auth_url = f"https://kauth.kakao.com/oauth/authorize?response_type=code&client_id={ServerInformation.REST_API_KEY}&redirect_uri={ServerInformation.REDIRECT_URI}"
+    return RedirectResponse(url = kakao_auth_url)
 
 # 인증 코드 받기 및 액세스 토큰 요청
-@app.post('/oAuth')
+@app.get('/kakaoAuth')
 def oauth(request: Request, db: Session = Depends(get_db)):
     code = request.query_params.get('code') 
     token_url = "https://kauth.kakao.com/oauth/token"
@@ -74,27 +70,16 @@ def oauth(request: Request, db: Session = Depends(get_db)):
     user_info_response = requests.get(user_info_url, headers=headers)
     user_info = user_info_response.json()
 
-    user = User(userId=user_info.get('id'))
-    db.add(user)
-    db.commit()
+    user = User(ID=user_info.get('id'))
+    if(db.query(User).filter(User.ID == user_info.get('id')).first() == None):
+        db.add(user)
+        db.commit()
     
-    return {"user_info": user_info, "message" : "주어진 ID를 사용하여 서비스를 이용할 수 있습니다."}
-
-@app.post("/entertainment/{user_id}")
-def create_user(data: CreateUserRequest, db: Session = Depends(get_db)):
-    forcheck = db.query(User).filter(User.ID == data.id).first()
-    checkValidateforCreate(forcheck, db)
-    
-    db_user = User(ID = data.id, userName=data.name, userPassword=data.password, userPhone=data.phone, userAccess = 10)
-    db.add(db_user)
-    db.commit()
-    return {"your_ID" : db_user.ID , "detail" : "Now you can use with this ID"}
-
+    return {"user_id": user_info.get('id'), "message" : "주어진 ID를 사용하여 서비스를 이용할 수 있습니다."}
 
 @app.get("/entertainment/{user_id}")
-def top10Review(user_id: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.ID == user_id).first()
-    checkValidateforUse(user, db)
+def top10Review(user_id: int, db: Session = Depends(get_db)):
+    checkValidateforUse(user_id, db)
 
     # Query for top 10 reviews
     top10 = db.query(
@@ -113,8 +98,7 @@ def top10Review(user_id: str, db: Session = Depends(get_db)):
 
 @app.get("/entertainment/{user_id}/specific")
 def read_entertainment(user_id: str, data: SpecificEntertainmentReview, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.ID == user_id).first()
-    checkValidateforUse(user, db)
+    checkValidateforUse(user_id, db)
     
     avg_score = db.query(func.avg(Entertainment.Score)).filter(Entertainment.workName == data.workName).scalar()
     
