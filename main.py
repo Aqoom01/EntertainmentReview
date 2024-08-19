@@ -1,7 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
+from models import User, Entertainment
+from database import SessionLocal
+import ServerInformation
+import requests
 
 import sys
 import os
@@ -12,8 +17,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
-from models import User, Entertainment
-from database import SessionLocal, engine, Base
 
 app = FastAPI()
 
@@ -39,15 +42,45 @@ def checkValidateforUse(user: User, db: Session):
         db.commit()
 
 class CreateUserRequest(BaseModel):
-    id: str
-    name: str
-    password: str
-    phone: str
+    id: int
 
 class SpecificEntertainmentReview(BaseModel):
     workName: str
 
-@app.post("/entertainment")
+@app.get('/login')
+def login():
+    kakao_auth_url = f"https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${ServerInformation.REST_API_KEY}&redirect_uri=${ServerInformation.REDIRECT_URI}"
+    return RedirectResponse(url=kakao_auth_url)
+
+# 인증 코드 받기 및 액세스 토큰 요청
+@app.post('/oAuth')
+def oauth(request: Request, db: Session = Depends(get_db)):
+    code = request.query_params.get('code') 
+    token_url = "https://kauth.kakao.com/oauth/token"
+    data = {
+        "grant_type": "authorization_code",
+        "client_id": ServerInformation.REST_API_KEY,
+        "redirect_uri": ServerInformation.REDIRECT_URI,
+        "code": code,
+    }
+    token_response = requests.post(token_url, data=data)
+    token_json = token_response.json()
+    access_token = token_json.get("access_token")
+
+    user_info_url = "https://kapi.kakao.com/v2/user/me"
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    user_info_response = requests.get(user_info_url, headers=headers)
+    user_info = user_info_response.json()
+
+    user = User(userId=user_info.get('id'))
+    db.add(user)
+    db.commit()
+    
+    return {"user_info": user_info, "message" : "주어진 ID를 사용하여 서비스를 이용할 수 있습니다."}
+
+@app.post("/entertainment/{user_id}")
 def create_user(data: CreateUserRequest, db: Session = Depends(get_db)):
     forcheck = db.query(User).filter(User.ID == data.id).first()
     checkValidateforCreate(forcheck, db)
@@ -89,3 +122,7 @@ def read_entertainment(user_id: str, data: SpecificEntertainmentReview, db: Sess
         raise HTTPException(status_code=404, detail="Entertainment not found")
     
     return {"score": avg_score}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)

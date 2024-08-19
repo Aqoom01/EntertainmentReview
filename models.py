@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy import Column, Integer, String, Date, BigInteger
 from sqlalchemy.orm import validates, declarative_base
 
 import sys
@@ -25,10 +25,7 @@ class Entertainment(Base):
 class User(Base):
     __tablename__ = "user"
     
-    ID = Column(String(30), primary_key=True, index=True)
-    userName = Column(String(10))
-    userPassword = Column(String(12))
-    userPhone = Column(String(15))
+    ID = Column(BigInteger, primary_key=True, index=True)
     userAccess = Column(Integer, default=10)
 
 @validates("userAccess")
