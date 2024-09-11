@@ -4,9 +4,7 @@ from sqlalchemy.orm import validates, declarative_base
 import sys
 import os
 
-# 현재 스크립트 파일의 경로를 가져옵니다
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# 상위 디렉토리를 추가합니다
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 

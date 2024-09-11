@@ -1,4 +1,6 @@
+### 서버 정보 ###
 ServerInformation.py
 
+### 데이터베이스 파일 ###
 .xlsx
 .sql
