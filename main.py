@@ -5,8 +5,6 @@ from sqlalchemy import func
 from pydantic import BaseModel
 from models import User, Entertainment
 from database import SessionLocal
-import ServerInformation
-import requests
 import threading
 from datetime import datetime
 import time
@@ -30,9 +28,8 @@ def background_task():
 
 @app.on_event("startup")
 async def startup():
-    # Rate Limiting 초기화
     await init_limiter()
-    # 백그라운드 작업 시작
+    
     thread = threading.Thread(target=background_task, daemon=True)
     thread.start()
 
